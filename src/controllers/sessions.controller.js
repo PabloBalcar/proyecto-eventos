@@ -1,4 +1,5 @@
 import { generateToken } from "../utils/jwt.js";
+import { UserModel } from "../models/User.js";
 
 export const getSessions = (req, res) => {
   res.status(200).json({
@@ -67,4 +68,19 @@ export const logout = (req, res) => {
     status: "success",
     message: "Sesión cerrada",
   });
+};
+export const getAllUsers = async (req, res) => {
+  try {
+    const users = await UserModel.find().select("-password");
+
+    return res.status(200).json({
+      status: "success",
+      payload: users,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      status: "error",
+      message: "Error al obtener los usuarios",
+    });
+  }
 };

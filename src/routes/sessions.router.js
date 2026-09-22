@@ -1,12 +1,14 @@
 import { Router } from "express";
 import passport from "passport";
-
+import { authMiddleware } from "../middlewares/auth.middleware.js";
+import { authorizeRoles } from "../middlewares/authorize.middleware.js";
 import {
   getSessions,
   register,
   login,
   getCurrentUser,
   logout,
+  getAllUsers,
 } from "../controllers/sessions.controller.js";
 
 const router = Router();
@@ -25,11 +27,9 @@ router.post(
   login,
 );
 
-router.get(
-  "/current",
-  passport.authenticate("current", { session: false }),
-  getCurrentUser,
-);
+router.get("/current", authMiddleware, getCurrentUser);
+
+router.get("/users", authMiddleware, authorizeRoles("admin"), getAllUsers);
 
 router.post("/logout", logout);
 
