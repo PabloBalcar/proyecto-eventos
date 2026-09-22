@@ -4,7 +4,7 @@ API REST para una plataforma de gestión de eventos.
 
 ## Tema del proyecto
 
-El proyecto consiste en una plataforma donde los usuarios podrán consultar y registrarse a eventos. A futuro se incorporarán funcionalidades de autenticación, autorización, gestión de eventos e inscripciones.
+El proyecto consiste en una plataforma donde los usuarios podrán consultar y registrarse a eventos. El proyecto incorpora autenticación de usuarios mediante JWT y cookies.
 
 ## Tecnologías
 
@@ -16,6 +16,8 @@ El proyecto consiste en una plataforma donde los usuarios podrán consultar y re
 - ESM (ECMAScript Modules)
 - dotenv
 - bcrypt
+- jsonwebtoken
+- cookie-parser
 
 ## Instalación
 

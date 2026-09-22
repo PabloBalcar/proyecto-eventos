@@ -1,5 +1,6 @@
 import { UsersRepository } from "../repositories/users.repository.js";
-import { createHash } from "../utils/hash.js";
+import { createHash, isValidPassword } from "../utils/hash.js";
+import { generateToken } from "../utils/jwt.js";
 
 const usersRepository = new UsersRepository();
 
@@ -30,4 +31,32 @@ export const registerUser = async ({
   });
 
   return newUser;
+};
+
+export const loginUser = async ({ email, password }) => {
+  const normalizedEmail = email.toLowerCase().trim();
+
+  const user = await usersRepository.findByEmail(normalizedEmail);
+
+  if (!user) {
+    const error = new Error("Credenciales inválidas");
+    error.status = 401;
+    throw error;
+  }
+
+  const validPassword = await isValidPassword(password, user.password);
+
+  if (!validPassword) {
+    const error = new Error("Credenciales inválidas");
+    error.status = 401;
+    throw error;
+  }
+
+  const tokenUser = {
+    id: user._id.toString(),
+    email: user.email,
+    role: user.role,
+  };
+
+  return generateToken(tokenUser);
 };

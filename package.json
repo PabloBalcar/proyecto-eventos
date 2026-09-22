@@ -13,8 +13,10 @@
   "license": "ISC",
   "dependencies": {
     "bcrypt": "^6.0.0",
+    "cookie-parser": "^1.4.7",
     "dotenv": "^17.x.x",
     "express": "^5.x.x",
+    "jsonwebtoken": "^9.0.3",
     "mongoose": "^9.10.1"
   }
 }
