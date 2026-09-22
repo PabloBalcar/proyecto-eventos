@@ -512,3 +512,91 @@ Los repositories centralizan el acceso a MongoDB mediante Mongoose.
 - Cancelar un evento cambia su estado a `cancelled`; no se elimina de MongoDB.
 - No se puede publicar o cancelar un evento cuya fecha ya pasó.
 - El listado utiliza paginación para evitar devolver todos los documentos sin límite.
+
+## Tickets e inscripciones
+
+La entidad `Ticket` representa la inscripción de un usuario a un evento.
+
+El ticket utiliza referencias mediante `ObjectId` hacia `User` y `Event`, sin almacenar objetos completos.
+
+### Estados de Ticket
+
+Los estados disponibles son:
+
+- `confirmed`: inscripción confirmada.
+- `pending`: inscripción pendiente.
+- `cancelled`: inscripción cancelada.
+
+Los tickets cancelados no ocupan cupo.
+
+### Endpoints
+
+| Método | Ruta                       | Acceso                        |
+| ------ | -------------------------- | ----------------------------- |
+| POST   | `/api/events/:eid/tickets` | Usuario autenticado           |
+| GET    | `/api/tickets/my-tickets`  | Usuario autenticado           |
+| GET    | `/api/events/:eid/tickets` | Organizer propietario o admin |
+| PATCH  | `/api/tickets/:tid/cancel` | Dueño del ticket o admin      |
+
+### Flujo de inscripción
+
+Al crear una inscripción, el backend verifica:
+
+- que el evento exista;
+- que esté publicado;
+- que no haya finalizado;
+- que la cantidad sea mayor a cero;
+- que existan suficientes cupos;
+- que el usuario no tenga una inscripción activa previa.
+
+La cantidad de cupos ocupados se calcula considerando únicamente tickets `confirmed` o `pending`. Los tickets `cancelled` no ocupan cupo.
+
+El usuario se obtiene desde `req.user` y no desde el body.
+
+Cada ticket genera un código de reserva único.
+
+### Cancelación
+
+La cancelación no elimina físicamente el ticket.
+
+El estado cambia a `cancelled` y se registra la fecha en `cancelledAt`.
+
+Al dejar de contar el ticket cancelado en el cálculo de cupos, el lugar queda disponible nuevamente.
+
+Un usuario solamente puede cancelar sus propios tickets. Un `admin` puede cancelar cualquier ticket.
+
+### Notificaciones por email
+
+Las confirmaciones de inscripción utilizan Nodemailer.
+
+Las credenciales se configuran mediante variables de entorno:
+
+```env
+MAIL_HOST=
+MAIL_PORT=
+MAIL_USER=
+MAIL_PASS=
+MAIL_FROM=
+```
+
+Las credenciales reales no se incluyen en el repositorio.
+
+El envío del email funciona como una notificación posterior a la creación del ticket. Si el envío falla, la inscripción continúa siendo válida.
+
+### Arquitectura
+
+La lógica de negocio de tickets se encuentra en `services`.
+
+El acceso a MongoDB se encuentra en `repositories`.
+
+La estructura utilizada es:
+
+```text
+Controller
+    ↓
+Service
+    ↓
+Repository
+    ↓
+MongoDB
+```

@@ -3,12 +3,13 @@ import cookieParser from "cookie-parser";
 import eventsRouter from "./routes/events.router.js";
 import sessionsRouter from "./routes/sessions.router.js";
 import passport from "./config/passport.config.js";
-
+import ticketsRouter from "./routes/tickets.router.js";
 const app = express();
 
 app.use(express.json());
 app.use(cookieParser());
 app.use(passport.initialize());
+app.use("/api/tickets", ticketsRouter);
 
 app.get("/api/health", (req, res) => {
   res.status(200).json({

@@ -8,6 +8,11 @@ import {
   updateEventStatus,
 } from "../controllers/events.controller.js";
 
+import {
+  createTicket,
+  getEventTickets,
+} from "../controllers/ticket.controller.js";
+
 import { authMiddleware } from "../middlewares/auth.middleware.js";
 import { authorizeRoles } from "../middlewares/authorize.middleware.js";
 import { authorizeEventOwnerOrAdmin } from "../middlewares/eventOwnership.middleware.js";
@@ -42,6 +47,15 @@ router.patch(
   authorizeRoles("organizer", "admin"),
   authorizeEventOwnerOrAdmin,
   updateEventStatus,
+);
+
+router.post("/:eid/tickets", authMiddleware, createTicket);
+
+router.get(
+  "/:eid/tickets",
+  authMiddleware,
+  authorizeRoles("organizer", "admin"),
+  getEventTickets,
 );
 
 export default router;
