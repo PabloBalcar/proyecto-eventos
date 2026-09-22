@@ -2,9 +2,9 @@ import { EventModel } from "../models/Event.js";
 
 export const authorizeEventOwnerOrAdmin = async (req, res, next) => {
   try {
-    const { eventId } = req.params;
+    const { id } = req.params;
 
-    const event = await EventModel.findById(eventId);
+    const event = await EventModel.findById(id);
 
     if (!event) {
       return res.status(404).json({

@@ -1,58 +1,100 @@
-import { EventModel } from "../models/Event.js";
+import * as eventService from "../services/event.service.js";
 
-export const getEvents = (req, res) => {
-  res.status(200).json({
-    status: "success",
-    payload: [],
-  });
+export const getEvents = async (req, res) => {
+  try {
+    const result = await eventService.getEvents(req.query);
+
+    return res.status(200).json({
+      status: "success",
+      ...result,
+    });
+  } catch (error) {
+    return res.status(400).json({
+      status: "error",
+      message: error.message,
+    });
+  }
+};
+
+export const getEventById = async (req, res) => {
+  try {
+    const event = await eventService.getEventById(req.params.id);
+
+    if (!event) {
+      return res.status(404).json({
+        status: "error",
+        message: "Evento no encontrado",
+      });
+    }
+
+    return res.status(200).json({
+      status: "success",
+      data: event,
+    });
+  } catch (error) {
+    return res.status(400).json({
+      status: "error",
+      message: "ID de evento inválido",
+    });
+  }
 };
 
 export const createEvent = async (req, res) => {
   try {
-    const { title, description, date, location, capacity } = req.body;
-
-    const event = await EventModel.create({
-      title,
-      description,
-      date,
-      location,
-      capacity,
-      organizer: req.user._id,
-    });
+    const event = await eventService.createEvent(req.body, req.user._id);
 
     return res.status(201).json({
       status: "success",
       message: "Evento creado correctamente",
-      payload: event,
+      data: event,
     });
   } catch (error) {
-    return res.status(500).json({
+    return res.status(400).json({
       status: "error",
-      message: "Error al crear el evento",
+      message: error.message,
     });
   }
 };
+
 export const updateEvent = async (req, res) => {
   try {
-    const { title, description, date, location, capacity } = req.body;
-
-    req.event.title = title ?? req.event.title;
-    req.event.description = description ?? req.event.description;
-    req.event.date = date ?? req.event.date;
-    req.event.location = location ?? req.event.location;
-    req.event.capacity = capacity ?? req.event.capacity;
-
-    await req.event.save();
+    const event = await eventService.updateEvent(req.event, req.body);
 
     return res.status(200).json({
       status: "success",
       message: "Evento actualizado correctamente",
-      payload: req.event,
+      data: event,
     });
   } catch (error) {
-    return res.status(500).json({
+    return res.status(400).json({
       status: "error",
-      message: "Error al actualizar el evento",
+      message: error.message,
+    });
+  }
+};
+
+export const updateEventStatus = async (req, res) => {
+  try {
+    const { status } = req.body;
+
+    if (!status) {
+      return res.status(400).json({
+        status: "error",
+        message: "El status es obligatorio",
+      });
+    }
+
+    const event = await eventService.updateEventStatus(req.event, status);
+
+    return res.status(200).json({
+      status: "success",
+      message: "Estado del evento actualizado correctamente",
+      data: event,
+    });
+  } catch (error) {
+    return res.status(400).json({
+      status: "error",
+      message: error.message,
     });
   }
 };

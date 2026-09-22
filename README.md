@@ -342,3 +342,173 @@ src/
 - Las contraseñas no se devuelven en las respuestas de la API.
 - Los permisos se validan mediante middlewares en el backend.
 - El rol asignado durante el registro público siempre es `user`.
+
+## Entidad Event
+
+La entidad `Event` representa los eventos gestionados por la plataforma.
+
+Cada evento contiene:
+
+- `title`: título del evento.
+- `description`: descripción.
+- `category`: referencia a una categoría mediante `ObjectId`.
+- `date`: fecha y hora.
+- `location`: ubicación.
+- `capacity`: capacidad máxima.
+- `price`: precio, con valor `0` por defecto.
+- `status`: estado del evento.
+- `organizer`: referencia al usuario que creó el evento.
+
+El campo `organizer` utiliza una referencia a `User` y se asigna automáticamente desde el usuario autenticado. No puede ser enviado manualmente desde el body.
+
+### Estados
+
+Los eventos pueden tener los siguientes estados:
+
+- `draft`: evento creado pero no publicado.
+- `published`: evento publicado.
+- `cancelled`: evento cancelado.
+- `finished`: evento finalizado.
+
+Los eventos cancelados no se eliminan físicamente de la base de datos.
+
+## Endpoints de eventos
+
+| Método | Ruta                     | Acceso                     |
+| ------ | ------------------------ | -------------------------- |
+| GET    | `/api/events`            | Público                    |
+| GET    | `/api/events/:id`        | Público                    |
+| POST   | `/api/events`            | `organizer`, `admin`       |
+| PUT    | `/api/events/:id`        | Dueño del evento o `admin` |
+| PATCH  | `/api/events/:id/status` | Dueño del evento o `admin` |
+
+### Crear evento
+
+```http
+POST /api/events
+```
+
+Requiere autenticación y rol `organizer` o `admin`.
+
+La fecha debe ser futura, la capacidad debe ser mayor a `0` y el precio no puede ser negativo.
+
+### Consultar eventos
+
+```http
+GET /api/events
+```
+
+Permite utilizar filtros, paginación y ordenamiento.
+
+Filtros disponibles:
+
+```text
+status
+category
+location
+dateFrom
+dateTo
+page
+limit
+sort
+```
+
+Ejemplo:
+
+```http
+GET /api/events?status=published&category=workshop&page=2&limit=5
+```
+
+La respuesta incluye información de paginación:
+
+```json
+{
+  "data": [],
+  "page": 1,
+  "limit": 10,
+  "total": 0,
+  "totalPages": 0
+}
+```
+
+### Consultar un evento
+
+```http
+GET /api/events/:id
+```
+
+Es una ruta pública y devuelve el evento correspondiente al identificador.
+
+Si el evento no existe, devuelve `404`.
+
+### Modificar evento
+
+```http
+PUT /api/events/:id
+```
+
+Requiere autenticación.
+
+Un `organizer` solamente puede modificar sus propios eventos. Un `admin` puede modificar cualquier evento.
+
+Los eventos cancelados no pueden modificarse.
+
+### Cambiar estado
+
+```http
+PATCH /api/events/:id/status
+```
+
+Permite cambiar el estado del evento.
+
+Los eventos cancelados no pueden cambiar nuevamente de estado.
+
+No se permite publicar o cancelar un evento cuya fecha ya pasó.
+
+## Arquitectura de eventos
+
+La lógica de eventos se encuentra separada en diferentes capas:
+
+```text
+Route
+  ↓
+Controller
+  ↓
+Service
+  ↓
+Repository
+  ↓
+MongoDB
+```
+
+### Controllers
+
+Los controllers reciben las peticiones HTTP y construyen las respuestas.
+
+### Services
+
+Los services contienen las reglas de negocio, como:
+
+- validar fechas;
+- validar capacidad;
+- validar precio;
+- controlar estados;
+- impedir modificaciones de eventos cancelados;
+- impedir publicar o cancelar eventos finalizados.
+
+### Repositories
+
+Los repositories centralizan el acceso a MongoDB mediante Mongoose.
+
+## Reglas de negocio
+
+- No se pueden crear eventos con fecha pasada.
+- `capacity` debe ser mayor que `0`.
+- `price` debe ser mayor o igual a `0`.
+- El estado solo puede ser `draft`, `published`, `cancelled` o `finished`.
+- Los eventos cancelados no pueden modificarse.
+- Un organizer solo puede modificar sus propios eventos.
+- Un admin puede modificar eventos de cualquier organizer.
+- Cancelar un evento cambia su estado a `cancelled`; no se elimina de MongoDB.
+- No se puede publicar o cancelar un evento cuya fecha ya pasó.
+- El listado utiliza paginación para evitar devolver todos los documentos sin límite.
