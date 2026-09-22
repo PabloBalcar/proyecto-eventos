@@ -15,11 +15,12 @@ El proyecto consiste en una plataforma donde los usuarios podrán consultar y re
 - JavaScript
 - ESM (ECMAScript Modules)
 - dotenv
+- bcrypt
 
 ## Instalación
 
 Clonar el repositorio:
 
 ```bash
-git clone URL_DEL_REPOSITORIO
+git clone https://github.com/PabloBalcar/proyecto-eventos.git
 ```

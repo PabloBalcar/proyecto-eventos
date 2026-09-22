@@ -12,6 +12,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "bcrypt": "^6.0.0",
     "dotenv": "^17.x.x",
     "express": "^5.x.x",
     "mongoose": "^9.10.1"
