@@ -1,10 +1,10 @@
-import { EventModel } from "../models/Event.js";
+import * as eventRepository from "../repositories/event.repository.js";
 
-export const authorizeEventOwnerOrAdmin = async (req, res, next) => {
+export const eventOwnership = async (req, res, next) => {
   try {
-    const { id } = req.params;
+    const eventId = req.params.eid;
 
-    const event = await EventModel.findById(id);
+    const event = await eventRepository.getEventById(eventId);
 
     if (!event) {
       return res.status(404).json({
@@ -13,11 +13,15 @@ export const authorizeEventOwnerOrAdmin = async (req, res, next) => {
       });
     }
 
-    const isAdmin = req.user.role === "admin";
+    if (req.user.role === "admin") {
+      req.event = event;
+      return next();
+    }
 
-    const isOwner = event.organizer.toString() === req.user._id.toString();
-
-    if (!isAdmin && !isOwner) {
+    if (
+      !event.organizer ||
+      event.organizer._id.toString() !== req.user._id.toString()
+    ) {
       return res.status(403).json({
         status: "error",
         message: "No tenés permisos para modificar este evento",
@@ -30,7 +34,7 @@ export const authorizeEventOwnerOrAdmin = async (req, res, next) => {
   } catch (error) {
     return res.status(500).json({
       status: "error",
-      message: "Error al verificar la propiedad del evento",
+      message: error.message,
     });
   }
 };

@@ -1,5 +1,6 @@
 import * as ticketRepository from "../repositories/ticket.repository.js";
-import { EventModel } from "../models/Event.js";
+import * as eventRepository from "../repositories/event.repository.js";
+import { sendTicketConfirmationEmail } from "./mail.service.js";
 
 const generateReservationCode = () => {
   const random = Math.random().toString(36).substring(2, 8).toUpperCase();
@@ -7,25 +8,35 @@ const generateReservationCode = () => {
   return `TCK-${random}`;
 };
 
-export const createTicket = async (userId, eventId, quantity) => {
-  const event = await EventModel.findById(eventId);
+export const createTicket = async (userId, eventId, quantity, user) => {
+  const event = await eventRepository.getEventById(eventId);
 
   if (!event) {
-    throw new Error("Evento no encontrado");
+    const error = new Error("Evento no encontrado");
+    error.status = 404;
+    throw error;
   }
 
   if (event.status !== "published") {
-    throw new Error("El evento no está disponible para inscripciones");
+    const error = new Error("El evento no está disponible para inscripciones");
+    error.status = 400;
+    throw error;
   }
 
   if (event.date <= new Date()) {
-    throw new Error("No es posible inscribirse a un evento finalizado");
+    const error = new Error("No es posible inscribirse a un evento finalizado");
+    error.status = 400;
+    throw error;
   }
 
   const parsedQuantity = Number(quantity);
 
   if (!Number.isInteger(parsedQuantity) || parsedQuantity <= 0) {
-    throw new Error("La cantidad debe ser un número entero mayor a cero");
+    const error = new Error(
+      "La cantidad debe ser un número entero mayor a cero",
+    );
+    error.status = 400;
+    throw error;
   }
 
   const existingTicket = await ticketRepository.findActiveTicket(
@@ -34,7 +45,9 @@ export const createTicket = async (userId, eventId, quantity) => {
   );
 
   if (existingTicket) {
-    throw new Error("Ya tenés una inscripción activa para este evento");
+    const error = new Error("Ya tenés una inscripción activa para este evento");
+    error.status = 409;
+    throw error;
   }
 
   const reserved = await ticketRepository.countReservedTickets(eventId);
@@ -42,7 +55,11 @@ export const createTicket = async (userId, eventId, quantity) => {
   const available = event.capacity - reserved;
 
   if (available < parsedQuantity) {
-    throw new Error(`No hay cupos suficientes. Disponibles: ${available}`);
+    const error = new Error(
+      `No hay cupos suficientes. Disponibles: ${available}`,
+    );
+    error.status = 400;
+    throw error;
   }
 
   const ticket = await ticketRepository.createTicket({
@@ -52,6 +69,17 @@ export const createTicket = async (userId, eventId, quantity) => {
     quantity: parsedQuantity,
     reservationCode: generateReservationCode(),
   });
+
+  try {
+    await sendTicketConfirmationEmail({
+      to: user.email,
+      userName: user.first_name,
+      eventTitle: event.title,
+      ticketCode: ticket.reservationCode,
+    });
+  } catch {
+    // El ticket se mantiene creado aunque falle el envío del email.
+  }
 
   return {
     ticket,
@@ -64,13 +92,18 @@ export const getMyTickets = async (userId) => {
 };
 
 export const getEventTickets = async (eventId, userId, role) => {
-  const event = await EventModel.findById(eventId);
+  const event = await eventRepository.getEventById(eventId);
 
   if (!event) {
-    throw new Error("Evento no encontrado");
+    const error = new Error("Evento no encontrado");
+    error.status = 404;
+    throw error;
   }
 
-  if (role !== "admin" && event.organizer.toString() !== userId.toString()) {
+  if (
+    role !== "admin" &&
+    event.organizer._id.toString() !== userId.toString()
+  ) {
     const error = new Error(
       "No tenés permisos para ver los tickets de este evento",
     );
@@ -85,7 +118,9 @@ export const cancelTicket = async (ticketId, userId, isAdmin) => {
   const ticket = await ticketRepository.getTicketById(ticketId);
 
   if (!ticket) {
-    throw new Error("Ticket no encontrado");
+    const error = new Error("Ticket no encontrado");
+    error.status = 404;
+    throw error;
   }
 
   if (!isAdmin && ticket.user._id.toString() !== userId.toString()) {
@@ -95,13 +130,17 @@ export const cancelTicket = async (ticketId, userId, isAdmin) => {
   }
 
   if (ticket.status === "cancelled") {
-    throw new Error("El ticket ya está cancelado");
+    const error = new Error("El ticket ya está cancelado");
+    error.status = 400;
+    throw error;
   }
 
   if (ticket.event.date <= new Date()) {
-    throw new Error(
+    const error = new Error(
       "No se puede cancelar una inscripción de un evento finalizado",
     );
+    error.status = 400;
+    throw error;
   }
 
   return ticketRepository.cancelTicket(ticketId);

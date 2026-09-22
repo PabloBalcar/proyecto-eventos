@@ -15,14 +15,14 @@ import {
 
 import { authMiddleware } from "../middlewares/auth.middleware.js";
 import { authorizeRoles } from "../middlewares/authorize.middleware.js";
-import { authorizeEventOwnerOrAdmin } from "../middlewares/eventOwnership.middleware.js";
+import { eventOwnership } from "../middlewares/eventOwnership.middleware.js";
 
 const router = Router();
 
 // Público
 router.get("/", getEvents);
 
-router.get("/:id", getEventById);
+router.get("/:eid", getEventById);
 
 // Organizer y admin
 router.post(
@@ -34,21 +34,22 @@ router.post(
 
 // Dueño o admin
 router.put(
-  "/:id",
+  "/:eid",
   authMiddleware,
   authorizeRoles("organizer", "admin"),
-  authorizeEventOwnerOrAdmin,
+  eventOwnership,
   updateEvent,
 );
 
 router.patch(
-  "/:id/status",
+  "/:eid/status",
   authMiddleware,
   authorizeRoles("organizer", "admin"),
-  authorizeEventOwnerOrAdmin,
+  eventOwnership,
   updateEventStatus,
 );
 
+// Tickets
 router.post("/:eid/tickets", authMiddleware, createTicket);
 
 router.get(

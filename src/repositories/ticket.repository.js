@@ -1,65 +1,31 @@
-import { TicketModel } from "../models/Ticket.js";
+import { TicketDAO } from "../dao/ticket.dao.js";
+
+const ticketDAO = new TicketDAO();
 
 export const createTicket = async (ticketData) => {
-  return TicketModel.create(ticketData);
+  return ticketDAO.create(ticketData);
 };
 
 export const findActiveTicket = async (userId, eventId) => {
-  return TicketModel.findOne({
-    user: userId,
-    event: eventId,
-    status: { $in: ["confirmed", "pending"] },
-  });
+  return ticketDAO.findActiveByUserAndEvent(userId, eventId);
 };
 
 export const countReservedTickets = async (eventId) => {
-  const result = await TicketModel.aggregate([
-    {
-      $match: {
-        event: eventId,
-        status: { $in: ["confirmed", "pending"] },
-      },
-    },
-    {
-      $group: {
-        _id: "$event",
-        totalReserved: {
-          $sum: "$quantity",
-        },
-      },
-    },
-  ]);
-
-  return result[0]?.totalReserved || 0;
+  return ticketDAO.countActiveByEvent(eventId);
 };
 
 export const getTicketsByUser = async (userId) => {
-  return TicketModel.find({
-    user: userId,
-  }).populate("event", "title date location");
+  return ticketDAO.findByUser(userId);
 };
 
 export const getTicketsByEvent = async (eventId) => {
-  return TicketModel.find({
-    event: eventId,
-  }).populate("user", "first_name last_name email");
+  return ticketDAO.findByEvent(eventId);
 };
 
 export const getTicketById = async (ticketId) => {
-  return TicketModel.findById(ticketId)
-    .populate("event")
-    .populate("user", "first_name last_name email");
+  return ticketDAO.findById(ticketId);
 };
 
 export const cancelTicket = async (ticketId) => {
-  return TicketModel.findByIdAndUpdate(
-    ticketId,
-    {
-      status: "cancelled",
-      cancelledAt: new Date(),
-    },
-    {
-      new: true,
-    },
-  );
+  return ticketDAO.cancel(ticketId);
 };

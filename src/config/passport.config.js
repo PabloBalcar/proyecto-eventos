@@ -1,12 +1,7 @@
 import passport from "passport";
 import { Strategy as LocalStrategy } from "passport-local";
-import { Strategy as JwtStrategy, ExtractJwt } from "passport-jwt";
-import { UserModel } from "../models/User.js";
-import { createHash, isValidPassword } from "../utils/hash.js";
-
-// ==============================
-// STRATEGY: REGISTER
-// ==============================
+import { Strategy as JwtStrategy } from "passport-jwt";
+import * as sessionService from "../services/session.service.js";
 
 passport.use(
   "register",
@@ -17,65 +12,23 @@ passport.use(
     },
     async (req, email, password, done) => {
       try {
-        const { first_name, last_name } = req.body;
-
-        if (!first_name || !last_name || !email || !password) {
-          return done(null, false, {
-            status: 400,
-            message: "Faltan campos obligatorios",
-          });
-        }
-
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-        if (!emailRegex.test(email.trim())) {
-          return done(null, false, {
-            status: 400,
-            message: "El email no tiene un formato válido",
-          });
-        }
-
-        if (password.length < 6) {
-          return done(null, false, {
-            status: 400,
-            message: "La contraseña debe tener al menos 6 caracteres",
-          });
-        }
-
-        const normalizedEmail = email.toLowerCase().trim();
-
-        const userExists = await UserModel.findOne({
-          email: normalizedEmail,
+        const user = await sessionService.registerUser({
+          first_name: req.body.first_name,
+          last_name: req.body.last_name,
+          email,
+          password,
         });
 
-        if (userExists) {
-          return done(null, false, {
-            status: 409,
-            message: "El email ya está registrado",
-          });
-        }
-
-        const hashedPassword = await createHash(password);
-
-        const newUser = await UserModel.create({
-          first_name: first_name.trim(),
-          last_name: last_name.trim(),
-          email: normalizedEmail,
-          password: hashedPassword,
-          role: "user",
-        });
-
-        return done(null, newUser);
+        return done(null, user);
       } catch (error) {
-        return done(error);
+        return done(null, false, {
+          status: error.status || 400,
+          message: error.message,
+        });
       }
     },
   ),
 );
-
-// ==============================
-// STRATEGY: LOGIN
-// ==============================
 
 passport.use(
   "login",
@@ -85,39 +38,18 @@ passport.use(
     },
     async (email, password, done) => {
       try {
-        const normalizedEmail = email.toLowerCase().trim();
-
-        const user = await UserModel.findOne({
-          email: normalizedEmail,
-        });
-
-        if (!user) {
-          return done(null, false, {
-            status: 401,
-            message: "Credenciales inválidas",
-          });
-        }
-
-        const validPassword = await isValidPassword(password, user.password);
-
-        if (!validPassword) {
-          return done(null, false, {
-            status: 401,
-            message: "Credenciales inválidas",
-          });
-        }
+        const user = await sessionService.validateLogin(email, password);
 
         return done(null, user);
       } catch (error) {
-        return done(error);
+        return done(null, false, {
+          status: error.status || 401,
+          message: error.message,
+        });
       }
     },
   ),
 );
-
-// ==============================
-// STRATEGY: CURRENT
-// ==============================
 
 const cookieExtractor = (req) => {
   let token = null;
@@ -138,12 +70,10 @@ passport.use(
     },
     async (jwtPayload, done) => {
       try {
-        const user = await UserModel.findById(jwtPayload.id);
+        const user = await sessionService.getUserById(jwtPayload.id);
 
         if (!user) {
-          return done(null, false, {
-            message: "Usuario no encontrado",
-          });
+          return done(null, false);
         }
 
         return done(null, user);

@@ -1,5 +1,5 @@
 import * as ticketService from "../services/ticket.service.js";
-import { sendTicketConfirmationEmail } from "../services/mail.service.js";
+import { TicketResponseDTO } from "../dto/ticket-response.dto.js";
 
 export const createTicket = async (req, res) => {
   try {
@@ -10,26 +10,18 @@ export const createTicket = async (req, res) => {
       req.user._id,
       eid,
       quantity,
+      req.user,
     );
 
-    try {
-      await sendTicketConfirmationEmail({
-        to: req.user.email,
-        userName: req.user.first_name,
-        eventTitle: result.event.title,
-        ticketCode: result.ticket.reservationCode,
-      });
-    } catch (emailError) {
-      console.log("No se pudo enviar el email de confirmación");
-    }
+    const ticketDTO = new TicketResponseDTO(result.ticket);
 
     return res.status(201).json({
       status: "success",
       message: "Inscripción realizada correctamente",
-      data: result.ticket,
+      data: ticketDTO,
     });
   } catch (error) {
-    return res.status(400).json({
+    return res.status(error.status || 400).json({
       status: "error",
       message: error.message,
     });
@@ -40,12 +32,14 @@ export const getMyTickets = async (req, res) => {
   try {
     const tickets = await ticketService.getMyTickets(req.user._id);
 
+    const ticketsDTO = tickets.map((ticket) => new TicketResponseDTO(ticket));
+
     return res.status(200).json({
       status: "success",
-      data: tickets,
+      data: ticketsDTO,
     });
   } catch (error) {
-    return res.status(500).json({
+    return res.status(error.status || 500).json({
       status: "error",
       message: error.message,
     });
@@ -54,14 +48,20 @@ export const getMyTickets = async (req, res) => {
 
 export const getEventTickets = async (req, res) => {
   try {
-    const tickets = await ticketService.getEventTickets(req.params.eid);
+    const tickets = await ticketService.getEventTickets(
+      req.params.eid,
+      req.user._id,
+      req.user.role,
+    );
+
+    const ticketsDTO = tickets.map((ticket) => new TicketResponseDTO(ticket));
 
     return res.status(200).json({
       status: "success",
-      data: tickets,
+      data: ticketsDTO,
     });
   } catch (error) {
-    return res.status(404).json({
+    return res.status(error.status || 400).json({
       status: "error",
       message: error.message,
     });
@@ -76,10 +76,12 @@ export const cancelTicket = async (req, res) => {
       req.user.role === "admin",
     );
 
+    const ticketDTO = new TicketResponseDTO(ticket);
+
     return res.status(200).json({
       status: "success",
       message: "Inscripción cancelada correctamente",
-      data: ticket,
+      data: ticketDTO,
     });
   } catch (error) {
     return res.status(error.status || 400).json({

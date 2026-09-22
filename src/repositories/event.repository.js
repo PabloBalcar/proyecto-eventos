@@ -1,16 +1,11 @@
-import { EventModel } from "../models/Event.js";
+import { EventDAO } from "../dao/event.dao.js";
+
+const eventDAO = new EventDAO();
 
 export const getEvents = async (filter, options = {}) => {
-  const { sort = "date", skip = 0, limit = 10 } = options;
-
   const [events, total] = await Promise.all([
-    EventModel.find(filter)
-      .populate("organizer", "first_name last_name email")
-      .sort(sort)
-      .skip(skip)
-      .limit(limit),
-
-    EventModel.countDocuments(filter),
+    eventDAO.findAll(filter, options),
+    eventDAO.count(filter),
   ]);
 
   return {
@@ -20,30 +15,17 @@ export const getEvents = async (filter, options = {}) => {
 };
 
 export const getEventById = async (id) => {
-  return EventModel.findById(id).populate(
-    "organizer",
-    "first_name last_name email",
-  );
+  return eventDAO.findById(id);
 };
 
 export const createEvent = async (eventData) => {
-  return EventModel.create(eventData);
+  return eventDAO.create(eventData);
 };
 
 export const updateEvent = async (id, eventData) => {
-  return EventModel.findByIdAndUpdate(id, eventData, {
-    new: true,
-    runValidators: true,
-  });
+  return eventDAO.update(id, eventData);
 };
 
 export const updateEventStatus = async (id, status) => {
-  return EventModel.findByIdAndUpdate(
-    id,
-    { status },
-    {
-      new: true,
-      runValidators: true,
-    },
-  );
+  return eventDAO.updateStatus(id, status);
 };

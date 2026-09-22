@@ -1,8 +1,9 @@
 import { generateToken } from "../utils/jwt.js";
-import { UserModel } from "../models/User.js";
+import * as sessionService from "../services/session.service.js";
+import { CurrentUserDTO } from "../dto/current-user.dto.js";
 
 export const getSessions = (req, res) => {
-  res.status(200).json({
+  return res.status(200).json({
     status: "success",
     message: "Ruta de sessions disponible",
   });
@@ -11,16 +12,12 @@ export const getSessions = (req, res) => {
 export const register = (req, res) => {
   const user = req.user;
 
+  const userDTO = new CurrentUserDTO(user);
+
   return res.status(201).json({
     status: "success",
     message: "Usuario registrado correctamente",
-    payload: {
-      id: user._id,
-      first_name: user.first_name,
-      last_name: user.last_name,
-      email: user.email,
-      role: user.role,
-    },
+    payload: userDTO,
   });
 };
 
@@ -49,15 +46,11 @@ export const login = (req, res) => {
 };
 
 export const getCurrentUser = (req, res) => {
-  const { id, email, role } = req.user;
+  const userDTO = new CurrentUserDTO(req.user);
 
   return res.status(200).json({
     status: "success",
-    payload: {
-      id,
-      email,
-      role,
-    },
+    payload: userDTO,
   });
 };
 
@@ -69,18 +62,19 @@ export const logout = (req, res) => {
     message: "Sesión cerrada",
   });
 };
+
 export const getAllUsers = async (req, res) => {
   try {
-    const users = await UserModel.find().select("-password");
+    const users = await sessionService.getAllUsers();
 
     return res.status(200).json({
       status: "success",
       payload: users,
     });
   } catch (error) {
-    return res.status(500).json({
+    return res.status(error.status || 500).json({
       status: "error",
-      message: "Error al obtener los usuarios",
+      message: error.message,
     });
   }
 };
